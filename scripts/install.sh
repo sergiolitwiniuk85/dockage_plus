@@ -27,14 +27,14 @@ elif [ "${1:-}" = "simple" ]; then
   mode="simple"
 else
   echo "  Select installation type:"
-  echo "    1)  Simple  — just check Docker & bash (recommended)"
-  echo "    2)  Full    — install whiptail (TUI) + bats (tests)"
+  echo "    1)  Simple  — just check Docker & bash"
+  echo "    2)  Full    — install whiptail (TUI) + bats (tests) (default)"
   echo ""
-  printf "  Choice [1/2] (default: 1): "
+  printf "  Choice [1/2] (default: 2): "
   read -r choice
   case "$choice" in
-    2|full|f) mode="full" ;;
-    *)        mode="simple" ;;
+    1|simple|s) mode="simple" ;;
+    *)          mode="full" ;;
   esac
 fi
 

@@ -32,7 +32,7 @@ bash install.sh
 
 The CLI works with Docker alone. Singularity is only needed if you deploy to HPC.
 
-The installer asks if you want a **Simple** setup (just check Docker) or **Full** (also install whiptail for the planned TUI and bats for running tests). You can also pass the mode directly:
+The installer asks if you want a **Simple** setup (just check Docker) or **Full** (also install whiptail for the planned TUI and bats for running tests). **Full** is the default. You can also pass the mode directly:
 
 ```bash
 bash install.sh simple   # skip optional deps
