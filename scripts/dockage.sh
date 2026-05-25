@@ -321,7 +321,7 @@ run_dispatch() {
       echo "────────────────────────────────────────" ;;
     --help)    usage ;;
     --version) echo "dockage v0.1.0" ;;
-    "")        if ui::interactive; then interactive_main_menu; else usage; fi ;;
+    "")        if ui::whiptail_ok || ui::tty_ok; then interactive_main_menu; else usage; fi ;;
     *)         echo "Unknown command: $1" >&2; usage; exit 1 ;;
   esac
 }
