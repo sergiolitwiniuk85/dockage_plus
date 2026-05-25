@@ -6,12 +6,17 @@ Welcome to Dockage, a collection of Dockerfiles designed for bioinformatic workf
 
 ### Prerequisites
 
-| Tool | Required for | Install |
-|------|-------------|---------|
-| **bash** ≥ 4.0 | Runtime (preinstalled on all Linux/macOS) | `apt install bash` |
+**Required:**
+| Tool | Needed for | Notes |
+|------|-----------|-------|
+| **bash** ≥ 4.0 | Runtime | ✅ Preinstalled on all Linux/macOS |
 | **Docker** | Building images | [docs.docker.com/get-docker](https://docs.docker.com/get-docker/) |
-| **Singularity/Apptainer** | Converting to `.sif` (HPC deploy) | [apptainer.org](https://apptainer.org/) |
-| **whiptail** | Interactive TUI *(planned, Phase 2)* | `apt install whiptail` |
+
+**Optional:**
+| Tool | Needed for | Install |
+|------|-----------|---------|
+| **Singularity/Apptainer** | Converting images to `.sif` for HPC | [apptainer.org](https://apptainer.org/) |
+| **whiptail** | Interactive TUI *(Phase 2 — planned)* | `apt install whiptail` |
 | **bats** | Running unit tests | `apt install bats` |
 
 ### Clone & setup
@@ -20,9 +25,12 @@ Welcome to Dockage, a collection of Dockerfiles designed for bioinformatic workf
 git clone https://github.com/sergiolitwiniuk85/dockage_plus.git
 cd dockage_plus/scripts
 chmod +x dockage.sh libs/*.sh
+
+# Optional: install extras for tests and TUI
+bash install.sh
 ```
 
-The CLI is ready to use — no external dependencies beyond Docker/Singularity.
+The CLI works with Docker alone. Singularity is only needed if you deploy to HPC.
 
 ## Quick Start
 

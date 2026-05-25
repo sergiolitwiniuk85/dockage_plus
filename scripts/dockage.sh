@@ -16,6 +16,7 @@ Commands:
   validate <tool> [version] Validate Dockerfile conventions
   init <type> <name> <ver>  Scaffold new tool Dockerfile
   convert <tool> <version>  Convert Docker image to Singularity
+  doctor                    Check dependencies and environment
 
 Options:
   --help     Show help for a command
@@ -78,6 +79,57 @@ case "${1:-}" in
   init)
     shift
     (cd "$DIR/.." && scaffolder::scaffold_main "$@")
+    ;;
+  doctor)
+    echo "─── dockage doctor ──────────────────────"
+
+    # Bash version
+    echo -n "  bash         "
+    if [ "${BASH_VERSINFO:-0}" -ge 4 ]; then
+      echo "[OK] v$BASH_VERSION"
+    else
+      echo "[WARNING] v$BASH_VERSION (≥ 4.0 recommended)"
+    fi
+
+    # Docker
+    echo -n "  docker       "
+    if command -v docker &>/dev/null; then
+      if docker info &>/dev/null; then
+        echo "[OK] $(docker --version 2>/dev/null)"
+      else
+        echo "[WARNING] installed but daemon not running"
+      fi
+    else
+      echo "[MISSING] install: https://docs.docker.com/get-docker/"
+    fi
+
+    # Singularity
+    echo -n "  singularity  "
+    if command -v singularity &>/dev/null; then
+      echo "[OK] $(singularity --version 2>/dev/null)"
+    elif command -v apptainer &>/dev/null; then
+      echo "[OK] $(apptainer --version 2>/dev/null)"
+    else
+      echo "[optional] not found — needed for convert"
+    fi
+
+    # whiptail
+    echo -n "  whiptail     "
+    if command -v whiptail &>/dev/null; then
+      echo "[OK] $(whiptail --version 2>&1 | head -1)"
+    else
+      echo "[optional] not found — needed for TUI (Phase 2)"
+    fi
+
+    # bats
+    echo -n "  bats         "
+    if command -v bats &>/dev/null; then
+      echo "[OK] $(bats --version 2>/dev/null)"
+    else
+      echo "[optional] not found — needed for tests"
+    fi
+
+    echo "────────────────────────────────────────"
     ;;
   convert)
     shift
