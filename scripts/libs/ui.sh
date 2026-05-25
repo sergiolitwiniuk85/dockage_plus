@@ -56,7 +56,7 @@ ui::radiolist() {
   local -a keys=() labels=()
   while [ $# -gt 2 ]; do
     keys+=("$1")
-    labels+=("$2 — $3")
+    labels+=("$2")
     shift 3
   done
 
@@ -72,8 +72,12 @@ ui::radiolist() {
   if ui::tty_ok; then
     echo "  $title" >&2
     echo "" >&2
+    local -a display=()
+    for i in "${!keys[@]}"; do
+      display+=("${keys[$i]} — ${labels[$i]}")
+    done
     PS3="  Choose: "
-    select _ in "${labels[@]}"; do
+    select _ in "${display[@]}"; do
       if [ -n "$REPLY" ] && [ "$REPLY" -ge 1 ] && [ "$REPLY" -le "${#keys[@]}" ]; then
         echo "${keys[$((REPLY-1))]}"
         break
@@ -85,7 +89,7 @@ ui::radiolist() {
   # Plain text
   echo "=== $title ===" >&2
   for i in "${!keys[@]}"; do
-    echo "  $((i+1))) ${labels[$i]}" >&2
+    echo "  $((i+1))) ${keys[$i]} — ${labels[$i]}" >&2
   done
   printf "Choice: " >&2; read -r choice
   local idx=$((choice - 1))

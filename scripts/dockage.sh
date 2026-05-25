@@ -43,11 +43,6 @@ EOF
 
 # ── Interactive TUI (whiptail) ────────────────
 interactive_main_menu() {
-  if ! ui::available; then
-    echo "whiptail not found. Install it or use CLI mode."
-    exit 1
-  fi
-
   local choice
   choice=$(ui::menu "dockage" \
     "Build"   "Build a Docker image (with validation)" \
