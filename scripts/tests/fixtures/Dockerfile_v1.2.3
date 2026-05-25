@@ -1,0 +1,4 @@
+FROM python:3.11-slim
+RUN pip install uv
+COPY Dockerfile /docker/
+RUN chmod -R 755 /docker

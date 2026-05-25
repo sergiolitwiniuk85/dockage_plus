@@ -1,0 +1,4 @@
+FROM rocker/r:4.4.0
+RUN R -e "install.packages('tidyverse')"
+COPY Dockerfile /docker/
+RUN chmod -R 755 /docker
