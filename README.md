@@ -16,7 +16,7 @@ Welcome to Dockage, a collection of Dockerfiles designed for bioinformatic workf
 | Tool | Needed for | Install |
 |------|-----------|---------|
 | **Singularity/Apptainer** | Converting images to `.sif` for HPC | [apptainer.org](https://apptainer.org/) |
-| **whiptail** | Interactive TUI *(Phase 2 — planned)* | `apt install whiptail` |
+| **whiptail** | Interactive TUI menus | `apt install whiptail` |
 | **bats** | Running unit tests | `apt install bats` |
 
 ### Clone & setup
@@ -32,7 +32,7 @@ bash install.sh
 
 The CLI works with Docker alone. Singularity is only needed if you deploy to HPC.
 
-The installer asks if you want a **Simple** setup (just check Docker) or **Full** (also install whiptail for the planned TUI and bats for running tests). **Full** is the default. You can also pass the mode directly:
+The installer asks if you want a **Simple** setup (just check Docker) or **Full** (also install whiptail for TUI menus and bats for tests). **Full** is the default. You can also pass the mode directly:
 
 ```bash
 bash install.sh simple   # skip optional deps
@@ -41,9 +41,16 @@ bash install.sh full     # install whiptail + bats
 
 ## Quick Start
 
+Run with no arguments to launch the interactive TUI (if whiptail is installed):
+
 ```bash
 cd scripts/
+./dockage.sh   # ← TUI menu (Build, Validate, Init, Convert, Doctor)
+```
 
+Or use CLI mode directly:
+
+```bash
 # Validate a Dockerfile follows repo conventions
 ./dockage.sh validate cellpose
 
