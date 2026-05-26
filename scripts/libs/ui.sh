@@ -30,22 +30,23 @@ ui::menu() {
     local result
     result=$(
       for i in "${!keys[@]}"; do
-        printf "%s\t%s\n" "${keys[$i]}" "${labels[$i]}"
-      done | fzf --with-nth=2.. --delimiter=$'\t' \
-                  --header="$title" --prompt="  Choose: " \
+        printf "%s - %s\n" "${keys[$i]}" "${labels[$i]}"
+      done | fzf --header="$title" --prompt="  Choose: " \
                   --height=~40% --reverse --cycle
     ) || return 1
-    local key
-    IFS=$'\t' read -r key _ <<< "$result"
-    echo "$key"
+    echo "${result%% - *}"
     return
   fi
 
   # Bash select fallback
   echo "  $title" >&2
   echo "" >&2
+  local -a display=()
+  for i in "${!keys[@]}"; do
+    display+=("${keys[$i]} - ${labels[$i]}")
+  done
   PS3="  Choose: "
-  select _ in "${labels[@]}"; do
+  select _ in "${display[@]}"; do
     if [ -n "$REPLY" ] && [ "$REPLY" -ge 1 ] && [ "$REPLY" -le "${#keys[@]}" ]; then
       echo "${keys[$((REPLY-1))]}"
       break
@@ -79,14 +80,11 @@ ui::radiolist() {
     local result
     result=$(
       for i in "${!keys[@]}"; do
-        printf "%s\t%s\n" "${keys[$i]}" "${labels[$i]}"
-      done | fzf --with-nth=2.. --delimiter=$'\t' \
-                  --header="$title" --prompt="  Choose: " \
+        printf "%s - %s\n" "${keys[$i]}" "${labels[$i]}"
+      done | fzf --header="$title" --prompt="  Choose: " \
                   --height=~80% --reverse --cycle
     ) || return 1
-    local key
-    IFS=$'\t' read -r key _ <<< "$result"
-    echo "$key"
+    echo "${result%% - *}"
     return
   fi
 
@@ -95,7 +93,7 @@ ui::radiolist() {
   echo "" >&2
   local -a display=()
   for i in "${!keys[@]}"; do
-    display+=("${keys[$i]} — ${labels[$i]}")
+    display+=("${keys[$i]} - ${labels[$i]}")
   done
   PS3="  Choose: "
   select _ in "${display[@]}"; do
