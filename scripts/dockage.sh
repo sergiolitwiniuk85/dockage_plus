@@ -152,15 +152,16 @@ interactive_build() {
   ui::msgbox "Validation Results" "$val_output"
 
   # Build
-  ui::info "Building $tool:$version..."
+  local tag; tag=$(builder::determine_tag "$tool" "$version")
+  ui::info "Building $tag..."
   (
-    echo "Building $tool:$version..."
-    docker build -t "$tool:$version" -f "$dockerfile" "$tool_dir" 2>&1
+    echo "Building $tag..."
+    docker build -t "$tag" -f "$dockerfile" "$tool_dir" 2>&1
     echo "Done."
   )
 
-  if ui::confirm "Convert $tool:$version to Singularity?"; then
-    builder::convert "$tool:$version"
+  if ui::confirm "Convert $tag to Singularity?"; then
+    builder::convert "$tag"
   fi
 }
 
@@ -234,36 +235,39 @@ interactive_convert() {
   version=$(pick_version "$tool") || return
   [ -z "$version" ] && return
 
-  local _sif_name="${tool}-${version}.sif"
-  local _tag="${tool}:${version}"
+  local tag; tag=$(builder::determine_tag "$tool" "$version")
+  local tool_lower; tool_lower=$(echo "$tool" | tr '[:upper:]' '[:lower:]')
+  local _sif_name="${tool_lower}-${version}.sif"
 
   # Check if Docker image exists locally
-  if ! docker image inspect "$_tag" &>/dev/null; then
-    if ui::confirm "Docker image $_tag not found locally.\n\nBuild it first?"; then
-      # Reuse interactive_build logic: build, then continue to convert
+  if ! docker image inspect "$tag" &>/dev/null; then
+    if ui::confirm "Docker image $tag not found locally.\n\nBuild it first?"; then
       local _tool_dir="$DIR/../$tool"
       local _dockerfile
       _dockerfile=$(builder::find_dockerfile "$_tool_dir" "$version") || {
         ui::msgbox "Error" "No Dockerfile found for $tool $version"
         return
       }
-      echo "Building $_tag... (this may take a while)"
-      docker build -t "$_tag" -f "$_dockerfile" "$_tool_dir" 2>&1
+      echo "Building $tag... (this may take a while)"
+      docker build -t "$tag" -f "$_dockerfile" "$_tool_dir" 2>&1 || {
+        ui::msgbox "Build failed" "docker build exited with non-zero status"
+        return
+      }
     else
       ui::msgbox "Cannot convert" \
-        "Build the image first:\n  dockage.sh build $tool $version\n\nOr pull it from Docker Hub:\n  docker pull $_tag"
+        "Build the image first:\n  dockage.sh build $tool $version\n\nOr pull it from Docker Hub:\n  docker pull $tag"
       return
     fi
   fi
 
-  if ! ui::confirm "Convert $_tag to Singularity?\n\nOutput: $_sif_name"; then
+  if ! ui::confirm "Convert $tag to Singularity?\n\nOutput: $_sif_name"; then
     return
   fi
 
-  builder::convert "$tool:$version"
+  builder::convert "$tag"
 
   if [ -f "$_sif_name" ]; then
-    ui::msgbox "Done" "Converted $_tag\n\nOutput: $(pwd)/$_sif_name"
+    ui::msgbox "Done" "Converted $tag\n\nOutput: $(pwd)/$_sif_name"
   fi
 }
 

@@ -88,6 +88,8 @@ builder::find_dockerfile() {
 builder::determine_tag() {
   local name="$1"
   local version="$2"
+  # Docker requires lowercase for repository name
+  name=$(echo "$name" | tr '[:upper:]' '[:lower:]')
   echo "${name}:${version}"
 }
 
