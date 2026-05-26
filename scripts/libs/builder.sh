@@ -91,6 +91,58 @@ builder::determine_tag() {
   echo "${name}:${version}"
 }
 
+# ── Lazy build fix: GPG keys ────────────────
+# If a build fails with missing GPG keys (common in pinned base images
+# with old Debian repos), extract the keys, patch the Dockerfile, retry.
+
+builder::_extract_gpg_keys() {
+  local log="$1"
+  grep -oP 'NO_PUBKEY \K[A-F0-9]+' "$log" | sort -u | tr '\n' ' '
+}
+
+builder::_patch_gpg_dockerfile() {
+  local dockerfile="$1"
+  local keys="$2"
+  local patched; patched=$(mktemp /tmp/dockage_dockerfile_XXXXXX)
+
+  local fix_block="# dockage: auto-fix missing GPG keys
+RUN apt-get install -y --allow-unauthenticated gnupg2 dirmngr 2>/dev/null || true; apt-key adv --keyserver keyserver.ubuntu.com --recv-keys ${keys}"
+
+  awk -v fix="$fix_block" '
+    /^RUN.*apt-get update.*/ && !fixed {
+      print fix
+      fixed = 1
+    }
+    { print }
+  ' "$dockerfile" > "$patched"
+
+  echo "$patched"
+}
+
+builder::_build_retry() {
+  local dockerfile="$1"
+  local tag="$2"
+  local context="$3"
+  local build_log="$4"
+
+  local keys
+  keys=$(builder::_extract_gpg_keys "$build_log")
+  [ -z "$keys" ] && return 1
+
+  local trimmed; trimmed=$(echo "$keys" | xargs)
+  echo "Detected missing GPG keys: $trimmed"
+  local patched; patched=$(builder::_patch_gpg_dockerfile "$dockerfile" "$trimmed")
+
+  echo "Retrying build with GPG key fix..."
+  if docker build -t "$tag" -f "$patched" "$context"; then
+    rm -f "$patched"
+    return 0
+  fi
+  rm -f "$patched"
+  return 1
+}
+
+# ── Build ───────────────────────────────────
 builder::build() {
   local tool_dir="$1"
   local version="$2"
@@ -121,11 +173,29 @@ builder::build() {
     echo "$cmd"
   else
     echo "Building $tag..."
-    eval "$cmd" || {
-      local rc=$?
+    local build_log; build_log=$(mktemp /tmp/dockage_build_XXXXXX)
+
+    # Capture build output so we can analyse errors, but still show in real-time.
+    # Use || to prevent set -e from killing us when docker build fails.
+    local rc=0
+    eval "$cmd" 2>&1 | tee "$build_log" || rc=${PIPESTATUS[0]}
+
+    if [ $rc -ne 0 ]; then
+      $_cleanup_symlink && rm -f "$tool_dir/Dockerfile"
+
+      if builder::_build_retry "$dockerfile" "$tag" "$tool_dir" "$build_log"; then
+        echo "Build succeeded after applying fix for missing GPG keys."
+        rm -f "$build_log"
+        $_cleanup_symlink && rm -f "$tool_dir/Dockerfile"
+        return 0
+      fi
+
+      rm -f "$build_log"
       $_cleanup_symlink && rm -f "$tool_dir/Dockerfile"
       return $rc
-    }
+    fi
+
+    rm -f "$build_log"
   fi
 
   $_cleanup_symlink && rm -f "$tool_dir/Dockerfile"
