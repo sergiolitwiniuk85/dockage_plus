@@ -4,51 +4,56 @@ Welcome to Dockage, a collection of Dockerfiles designed for bioinformatic workf
 
 ## Installation
 
-### Prerequisites
+### Requirements
 
-**Required:**
 | Tool | Needed for | Notes |
 |------|-----------|-------|
 | **bash** ≥ 4.0 | Runtime | ✅ Preinstalled on all Linux/macOS |
 | **Docker** | Building images | [docs.docker.com/get-docker](https://docs.docker.com/get-docker/) |
+| **Singularity/Apptainer** | Converting to `.sif` for HPC | Installed automatically in full mode |
+| **whiptail** | Interactive TUI (arrow keys, Enter, Escape) | Installed automatically in full mode |
+| **bats** | Running unit tests | Installed automatically in full mode |
 
-**Optional:**
-| Tool | Needed for | Install |
-|------|-----------|---------|
-| **Singularity/Apptainer** | Converting images to `.sif` for HPC | [apptainer.org](https://apptainer.org/) |
-| **whiptail** | Interactive TUI menus | `apt install whiptail` |
-| **bats** | Running unit tests | `apt install bats` |
-
-### Clone & setup
+### One-command setup (recommended)
 
 ```bash
 git clone https://github.com/sergiolitwiniuk85/dockage_plus.git
 cd dockage_plus/scripts
-chmod +x dockage.sh libs/*.sh
-
-# Check your setup and optionally install extras
 bash install.sh
+```
+
+The installer detects your package manager, uses `sudo` if needed, and installs everything. **Full** mode is the default and sets up:
+
+- `whiptail` — graphical TUI menus with arrow keys, Enter, Escape
+- `apptainer` (Singularity) — convert Docker images to `.sif` for HPC
+- `bats` — unit test framework
+
+You can also choose **Simple** mode (just checks Docker, skips optional deps):
+
+```bash
+bash install.sh simple      # minimal — Docker only
+bash install.sh full        # everything (default)
 ```
 
 The CLI works with Docker alone. Singularity is only needed if you deploy to HPC.
 
-The installer asks if you want a **Simple** setup (just check Docker) or **Full** (also install whiptail for TUI menus and bats for tests). **Full** is the default. You can also pass the mode directly:
-
-```bash
-bash install.sh simple   # skip optional deps
-bash install.sh full     # install whiptail + bats
-```
-
 ## Quick Start
 
-Run with no arguments to launch the interactive TUI (if whiptail is installed):
+Run with no arguments to launch the interactive menu:
 
 ```bash
 cd scripts/
-./dockage.sh   # ← TUI menu (Build, Validate, Init, Convert, Doctor)
+./dockage.sh
 ```
 
-Or use CLI mode directly:
+The UI adapts to what's available:
+- **whiptail** installed → graphical menu with arrow keys, Enter, Escape
+- **whiptail** not available but terminal → bash `select` menu with arrow keys + Enter
+- **pipe/CI** → plain usage text
+
+Use `DOCKAGE_TUI=1` to force whiptail mode if auto-detection doesn't trigger.
+
+You can also use CLI commands directly:
 
 ```bash
 # Validate a Dockerfile follows repo conventions
@@ -63,8 +68,11 @@ Or use CLI mode directly:
 # Scaffold a new tool (Python, R, GPU, or generic)
 ./dockage.sh init python mytool 1.0.0
 
-# Convert a built Docker image to Singularity
+# Convert a Docker image to Singularity (checks image exists first)
 ./dockage.sh convert cellpose 4.1.1
+
+# Check dependencies
+./dockage.sh doctor
 
 # Strict mode — fail on any convention violation
 ./dockage.sh validate stcancer --strict
@@ -81,14 +89,15 @@ The `scripts/dockage.sh` tool automates builds, validation, scaffolding, and Sin
 | `build <tool> [version]` | Validate conventions, then build Docker image. Auto-detects available versions. |
 | `validate <tool> [version]` | Check a Dockerfile against repo conventions. Use `--strict` to enforce rules. |
 | `init <type> <name> <version>` | Scaffold a new tool directory with a standardized Dockerfile + README. |
-| `convert <tool> <version>` | Convert a built Docker image to Singularity `.sif` format. |
+| `convert <tool> <version>` | Convert a built Docker image to Singularity `.sif` format. Checks the image exists first. |
+| `doctor` | Check installed dependencies (bash, docker, singularity, whiptail, bats). |
 
 ### Options
 
 | Flag | Applies to | Effect |
 |------|-----------|--------|
 | `--strict` | `validate`, `build` | Escalate warnings to errors (exit 1) |
-| `--dry-run` | `build` | Print commands without executing them |
+| `--dry-run` | `build`, `convert` | Print commands without executing them |
 | `--skip-validate` | `build` | Skip pre-build validation |
 | `--help` | any | Show usage |
 | `--version` | any | Show version |
@@ -139,7 +148,7 @@ dockage/
 │   │   ├── validator.sh      # Dockerfile convention checks
 │   │   ├── builder.sh        # Docker build + Singularity conversion
 │   │   ├── scaffolder.sh     # Template generator
-│   │   └── ui.sh             # Interactive menu stubs (TUI planned)
+│   │   └── ui.sh             # Three-tier UI: whiptail / bash select / plain text
 │   └── tests/
 │       ├── fixtures/         # Test Dockerfile samples
 │       ├── test_validator.bats
@@ -160,7 +169,7 @@ docker build -t toolName:version -f Dockerfile.version .
 singularity build toolName-version.sif docker-daemon://toolName:version
 ```
 
-> **Tip**: Use `scripts/dockage.sh build` instead — it handles version detection, validation, and optional Singularity conversion automatically.
+> **Tip**: Use `scripts/dockage.sh build` instead — it handles version detection, validation, and optional Singularity conversion automatically. Or just run `./dockage.sh` with no args for the interactive menu.
 
 ## Considerations when creating images
 
