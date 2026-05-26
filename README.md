@@ -11,7 +11,7 @@ Welcome to Dockage, a collection of Dockerfiles designed for bioinformatic workf
 | **bash** ≥ 4.0 | Runtime | ✅ Preinstalled on all Linux/macOS |
 | **Docker** | Building images | [docs.docker.com/get-docker](https://docs.docker.com/get-docker/) |
 | **Singularity/Apptainer** | Converting to `.sif` for HPC | Installed automatically in full mode |
-| **whiptail** | Interactive TUI (arrow keys, Enter, Escape) | Installed automatically in full mode |
+| **whiptail** | Interactive TUI *(optional — bash `select` is the default)* | Installed automatically in full mode |
 | **bats** | Running unit tests | Installed automatically in full mode |
 
 ### One-command setup (recommended)
@@ -24,7 +24,7 @@ bash install.sh
 
 The installer detects your package manager, uses `sudo` if needed, and installs everything. **Full** mode is the default and sets up:
 
-- `whiptail` — graphical TUI menus with arrow keys, Enter, Escape
+- `whiptail` *(optional — bash `select` is default UI, zero deps)*
 - `apptainer` (Singularity) — convert Docker images to `.sif` for HPC
 - `bats` — unit test framework
 
@@ -46,12 +46,9 @@ cd scripts/
 ./dockage.sh
 ```
 
-The UI adapts to what's available:
-- **whiptail** installed → graphical menu with arrow keys, Enter, Escape
-- **whiptail** not available but terminal → bash `select` menu with arrow keys + Enter
+The UI uses bash's built-in `select` — zero dependencies, arrow keys + Enter work natively:
+- **terminal** → interactive menu with arrow keys
 - **pipe/CI** → plain usage text
-
-Use `DOCKAGE_TUI=1` to force whiptail mode if auto-detection doesn't trigger.
 
 You can also use CLI commands directly:
 
@@ -148,7 +145,7 @@ dockage/
 │   │   ├── validator.sh      # Dockerfile convention checks
 │   │   ├── builder.sh        # Docker build + Singularity conversion
 │   │   ├── scaffolder.sh     # Template generator
-│   │   └── ui.sh             # Three-tier UI: whiptail / bash select / plain text
+│   │   └── ui.sh             # Interactive UI: bash select (terminal) / plain text (CI)
 │   └── tests/
 │       ├── fixtures/         # Test Dockerfile samples
 │       ├── test_validator.bats
