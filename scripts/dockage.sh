@@ -215,7 +215,12 @@ interactive_init() {
     return
   fi
 
+  local df; df="$DIR/../$name/Dockerfile.v$version"
   (cd "$DIR/.." && scaffolder::generate "$type" "$name" "$version")
+  if [ -f "$df" ]; then
+    echo "Opening $df in ${EDITOR:-nano}..."
+    ${EDITOR:-nano} "$df"
+  fi
   ui::msgbox "Created" "  $name/Dockerfile.v$version\n  $name/README.md"
 }
 
