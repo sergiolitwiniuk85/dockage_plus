@@ -28,7 +28,7 @@ elif [ "${1:-}" = "simple" ]; then
 else
   echo "  Select installation type:"
   echo "    1)  Simple  — just check Docker & bash"
-  echo "    2)  Full    — install whiptail (TUI) + bats (tests) (default)"
+  echo "    2)  Full    — install whiptail (TUI) + apptainer (Singularity) + bats (tests) (default)"
   echo ""
   printf "  Choice [1/2] (default: 2): "
   read -r choice
@@ -66,13 +66,15 @@ if [ "$mode" = "full" ]; then
   echo ""
   echo "  ── Installing optional dependencies ──"
 
-  # Detect package manager
+  # Detect package manager (prepend sudo if not root)
+  local _s=""
+  [ "$(id -u)" -ne 0 ] && command -v sudo &>/dev/null && _s="sudo "
   if command -v apt-get &>/dev/null; then
-    PKG="apt-get install -y"
+    PKG="${_s}apt-get install -y"
   elif command -v dnf &>/dev/null; then
-    PKG="dnf install -y"
+    PKG="${_s}dnf install -y"
   elif command -v yum &>/dev/null; then
-    PKG="yum install -y"
+    PKG="${_s}yum install -y"
   elif command -v brew &>/dev/null; then
     PKG="brew install"
   else
@@ -87,6 +89,31 @@ if [ "$mode" = "full" ]; then
     $PKG whiptail 2>/dev/null && info "whiptail:   installed" || warn "whiptail:   failed to install"
   else
     warn "whiptail:   install manually with your package manager"
+  fi
+
+  # apptainer (singularity fork, packaged in apt)
+  local _app_installed=false
+  if command -v singularity &>/dev/null; then
+    info "singularity: already installed"
+    _app_installed=true
+  elif command -v apptainer &>/dev/null; then
+    info "apptainer:  already installed"
+    _app_installed=true
+  elif [ -n "$PKG" ]; then
+    # Try apptainer first (apt), then singularity-ce, then go install
+    if $PKG apptainer 2>/dev/null; then
+      info "apptainer:  installed"
+      _app_installed=true
+    elif $PKG singularity-container 2>/dev/null; then
+      info "singularity: installed via apt"
+      _app_installed=true
+    else
+      warn "singularity: apt package not found. Install manually from:"
+      warn "            https://docs.sylabs.io/guides/latest/admin-guide/installation.html"
+    fi
+  else
+    warn "singularity: no package manager found — install manually from:"
+    warn "            https://docs.sylabs.io/guides/latest/admin-guide/installation.html"
   fi
 
   # bats
