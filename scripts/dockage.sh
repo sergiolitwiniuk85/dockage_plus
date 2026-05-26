@@ -91,7 +91,18 @@ pick_version() {
   done < <(ls "$tool_dir"/Dockerfile* 2>/dev/null | sort || true)
 
   [ ${#files[@]} -eq 0 ] && { ui::msgbox "Error" "No Dockerfiles found for $tool_name"; return 1; }
-  [ ${#files[@]} -eq 1 ] && { basename "${files[0]}" | sed 's/^Dockerfile//' | sed 's/^\.v/v/'; [ -z "$(basename "${files[0]}" | sed 's/^Dockerfile//')" ] && echo "latest"; return 0; }
+  if [ ${#files[@]} -eq 1 ]; then
+    local base
+    base=$(basename "${files[0]}")
+    if [ "$base" = "Dockerfile" ]; then
+      echo "latest"
+    else
+      local v="${base#Dockerfile}"
+      v="${v#.}"; v="${v#_}"; v="${v#-}"
+      echo "${v:-custom}"
+    fi
+    return 0
+  fi
 
   local items=()
   for f in "${files[@]}"; do
@@ -217,11 +228,17 @@ interactive_convert() {
     return
   fi
 
-  builder::convert "$tool:$version" 2>&1 | while IFS= read -r line; do
-    echo "XXX"
-    echo "$line"
-    echo "XXX"
-  done | whiptail --title "Converting to Singularity" --gauge "" 10 70 0
+  if ui::whiptail_ok; then
+    # Gauge uses format: XXX\n<percent>\n<text>\nXXX — send 50% as placeholder
+    builder::convert "$tool:$version" 2>&1 | while IFS= read -r line; do
+      echo "XXX"
+      echo "50"
+      echo "$line"
+      echo "XXX"
+    done | whiptail --title "Converting to Singularity" --gauge "" 10 70 0
+  else
+    builder::convert "$tool:$version"
+  fi
 }
 
 interactive_doctor() {

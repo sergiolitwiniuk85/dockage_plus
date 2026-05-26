@@ -28,6 +28,7 @@ ui::menu() {
   if ui::tty_ok; then
     echo "  $title" >&2
     echo "" >&2
+    local _old_ps3="${PS3-}"
     PS3="  Choose: "
     select _ in "${labels[@]}"; do
       if [ -n "$REPLY" ] && [ "$REPLY" -ge 1 ] && [ "$REPLY" -le "${#keys[@]}" ]; then
@@ -35,6 +36,7 @@ ui::menu() {
         break
       fi
     done </dev/tty
+    PS3="$_old_ps3"
     return
   fi
 
@@ -76,6 +78,7 @@ ui::radiolist() {
     for i in "${!keys[@]}"; do
       display+=("${keys[$i]} — ${labels[$i]}")
     done
+    local _old_ps3="${PS3-}"
     PS3="  Choose: "
     select _ in "${display[@]}"; do
       if [ -n "$REPLY" ] && [ "$REPLY" -ge 1 ] && [ "$REPLY" -le "${#keys[@]}" ]; then
@@ -83,6 +86,7 @@ ui::radiolist() {
         break
       fi
     done </dev/tty
+    PS3="$_old_ps3"
     return
   fi
 
