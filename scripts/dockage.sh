@@ -216,8 +216,7 @@ interactive_init() {
 }
 
 interactive_convert() {
-  # Check prerequisites first
-  local _sif_name
+  # Check singularity/apptainer first
   if ! command -v singularity &>/dev/null && ! command -v apptainer &>/dev/null; then
     ui::msgbox "Singularity not found" \
       "Singularity/Apptainer is required for conversion.\n\nInstall it or run: bash install.sh"
@@ -232,9 +231,29 @@ interactive_convert() {
   version=$(pick_version "$tool") || return
   [ -z "$version" ] && return
 
-  _sif_name="${tool}-${version}.sif"
+  local _sif_name="${tool}-${version}.sif"
+  local _tag="${tool}:${version}"
 
-  if ! ui::confirm "Convert $tool:$version to Singularity?\n\nOutput: $_sif_name"; then
+  # Check if Docker image exists locally
+  if ! docker image inspect "$_tag" &>/dev/null; then
+    if ui::confirm "Docker image $_tag not found locally.\n\nBuild it first?"; then
+      # Reuse interactive_build logic: build, then continue to convert
+      local _tool_dir="$DIR/../$tool"
+      local _dockerfile
+      _dockerfile=$(builder::find_dockerfile "$_tool_dir" "$version") || {
+        ui::msgbox "Error" "No Dockerfile found for $tool $version"
+        return
+      }
+      echo "Building $_tag... (this may take a while)"
+      docker build -t "$_tag" -f "$_dockerfile" "$_tool_dir" 2>&1
+    else
+      ui::msgbox "Cannot convert" \
+        "Build the image first:\n  dockage.sh build $tool $version\n\nOr pull it from Docker Hub:\n  docker pull $_tag"
+      return
+    fi
+  fi
+
+  if ! ui::confirm "Convert $_tag to Singularity?\n\nOutput: $_sif_name"; then
     return
   fi
 
@@ -251,7 +270,7 @@ interactive_convert() {
   fi
 
   if [ -f "$_sif_name" ]; then
-    ui::msgbox "Done" "Converted $tool:$version\n\nOutput: $(pwd)/$_sif_name"
+    ui::msgbox "Done" "Converted $_tag\n\nOutput: $(pwd)/$_sif_name"
   fi
 }
 

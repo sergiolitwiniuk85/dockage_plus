@@ -123,17 +123,31 @@ builder::convert() {
   local version="${tag#*:}"
   local sif="${name}-${version}.sif"
 
-  if ! command -v singularity &>/dev/null; then
+  if ! command -v singularity &>/dev/null && ! command -v apptainer &>/dev/null; then
     echo "Error: singularity not found. Install Singularity or Apptainer first." >&2
     return 1
   fi
 
-  local cmd="singularity build \"$sif\" docker-daemon://\"$tag\""
+  # Check that the Docker image exists locally
+  if ! docker image inspect "$tag" &>/dev/null; then
+    echo "Error: Docker image '$tag' not found locally." >&2
+    echo "  Build it first: dockage.sh build $name $version" >&2
+    echo "  Or pull it:     docker pull $tag (if available on Docker Hub)" >&2
+    return 1
+  fi
+
+  local cmd
+  if command -v singularity &>/dev/null; then
+    cmd="singularity build \"$sif\" docker-daemon://\"$tag\""
+  else
+    cmd="apptainer build \"$sif\" docker-daemon://\"$tag\""
+  fi
 
   if $dry_run; then
     echo "$cmd"
   else
     echo "Converting $tag to Singularity..."
+    echo "Output: $sif"
     eval "$cmd"
   fi
 }
