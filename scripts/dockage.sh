@@ -216,6 +216,14 @@ interactive_init() {
 }
 
 interactive_convert() {
+  # Check prerequisites first
+  local _sif_name
+  if ! command -v singularity &>/dev/null && ! command -v apptainer &>/dev/null; then
+    ui::msgbox "Singularity not found" \
+      "Singularity/Apptainer is required for conversion.\n\nInstall it or run: bash install.sh"
+    return
+  fi
+
   local tool
   tool=$(pick_tool "Convert — Select Tool") || return
   [ -z "$tool" ] && return
@@ -224,7 +232,9 @@ interactive_convert() {
   version=$(pick_version "$tool") || return
   [ -z "$version" ] && return
 
-  if ! ui::confirm "Convert $tool:$version to Singularity?"; then
+  _sif_name="${tool}-${version}.sif"
+
+  if ! ui::confirm "Convert $tool:$version to Singularity?\n\nOutput: $_sif_name"; then
     return
   fi
 
@@ -238,6 +248,10 @@ interactive_convert() {
     done | whiptail --title "Converting to Singularity" --gauge "" 10 70 0
   else
     builder::convert "$tool:$version"
+  fi
+
+  if [ -f "$_sif_name" ]; then
+    ui::msgbox "Done" "Converted $tool:$version\n\nOutput: $(pwd)/$_sif_name"
   fi
 }
 

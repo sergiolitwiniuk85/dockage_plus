@@ -3,8 +3,18 @@
 set -euo pipefail
 
 # ── Detection ────────────────────────────────
-ui::whiptail_ok() { command -v whiptail &>/dev/null && [ -t 0 ] && [ -t 1 ]; }
-ui::tty_ok()     { [ -t 0 ] && [ -t 1 ]; }
+# whiptail_ok: whiptail binary exists AND there's a terminal to draw on.
+# Uses /dev/tty (the controlling terminal) instead of -t flags because
+# some terminals (tmux, IDE terminals, SSH wrappers) set up stdin/stdout
+# in ways that fail -t but still have a working terminal.
+# DOCKAGE_TUI=1 forces whiptail mode even without /dev/tty.
+ui::whiptail_ok() {
+  command -v whiptail &>/dev/null || return 1
+  [ -n "${DOCKAGE_TUI:-}" ] && return 0
+  [ -c /dev/tty ] 2>/dev/null || return 1
+  return 0
+}
+ui::tty_ok()     { [ -c /dev/tty ] 2>/dev/null; }
 
 # ── Menu: returns selected item key ──────────
 ui::menu() {
