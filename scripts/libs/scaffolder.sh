@@ -17,7 +17,7 @@ scaffolder::generate() {
   case "$type" in
     python)
       dockerfile_content="FROM python:3.11-slim
-RUN pip install uv && uv pip install jupyterlab ipykernel papermill
+RUN pip install jupyterlab ipykernel papermill
 COPY Dockerfile /docker/
 RUN chmod -R 755 /docker"
       ;;
