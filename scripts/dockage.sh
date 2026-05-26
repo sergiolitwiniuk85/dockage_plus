@@ -74,7 +74,7 @@ pick_tool() {
     # Check how many Dockerfiles this tool has
     local count
     count=$(ls "$DIR/../$t"/Dockerfile* 2>/dev/null | wc -l)
-    items+=("$t" "$count Dockerfile(s)" "OFF")
+    items+=("$t" "$t ($count Dockerfile(s))" "OFF")
   done <<< "$tools"
 
   ui::radiolist "$title" "${items[@]}"

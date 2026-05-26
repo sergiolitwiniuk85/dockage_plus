@@ -104,14 +104,31 @@ builder::build() {
   local tag
   tag=$(builder::determine_tag "$name" "$version")
 
+  local dockerfile_bn; dockerfile_bn=$(basename "$dockerfile")
+
+  # Many Dockerfiles have COPY Dockerfile /docker/ — the source must be
+  # named "Dockerfile" in the build context. If the actual file has a
+  # different name (e.g. Dockerfile_v3), create a temporary symlink.
+  local _cleanup_symlink=false
+  if [ "$dockerfile_bn" != "Dockerfile" ] && [ ! -f "$tool_dir/Dockerfile" ]; then
+    ln -sf "$dockerfile_bn" "$tool_dir/Dockerfile"
+    _cleanup_symlink=true
+  fi
+
   local cmd="docker build -t \"$tag\" -f \"$dockerfile\" \"$tool_dir\""
 
   if $dry_run; then
     echo "$cmd"
   else
     echo "Building $tag..."
-    eval "$cmd"
+    eval "$cmd" || {
+      local rc=$?
+      $_cleanup_symlink && rm -f "$tool_dir/Dockerfile"
+      return $rc
+    }
   fi
+
+  $_cleanup_symlink && rm -f "$tool_dir/Dockerfile"
 }
 
 builder::convert() {
