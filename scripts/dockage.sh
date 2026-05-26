@@ -50,7 +50,7 @@ interactive_main_menu() {
     "Validate" "Check a Dockerfile against repo conventions" \
     "Init"    "Scaffold a new tool Dockerfile" \
     "Convert" "Convert Docker image to Singularity" \
-    "Health"  "Scan all Dockerfiles for known issues" \
+    "Check"   "Scan all Dockerfiles for known issues" \
     "Doctor"  "Check dependencies and environment" \
     "Exit"    "Leave dockage") || exit 0
 
@@ -59,7 +59,7 @@ interactive_main_menu() {
     Validate) interactive_validate ;;
     Init)     interactive_init ;;
     Convert)  interactive_convert ;;
-    Health)   interactive_health ;;
+    Check)    interactive_health ;;
     Doctor)   interactive_doctor ;;
     Exit)     exit 0 ;;
   esac
@@ -140,7 +140,6 @@ interactive_build() {
     return
   fi
 
-  # Run with progress
   local tool_dir="$DIR/../$tool"
   local dockerfile
   dockerfile=$(builder::find_dockerfile "$tool_dir" "$version")
@@ -151,14 +150,9 @@ interactive_build() {
   val_output=$(validate::run_all "$dockerfile" 2>&1 || true)
   ui::msgbox "Validation Results" "$val_output"
 
-  # Build
+  # Delegate to builder::build (handles symlinks, GPG fix, lowercase tags)
   local tag; tag=$(builder::determine_tag "$tool" "$version")
-  ui::info "Building $tag..."
-  (
-    echo "Building $tag..."
-    docker build -t "$tag" -f "$dockerfile" "$tool_dir" 2>&1
-    echo "Done."
-  )
+  builder::build "$tool_dir" "$version"
 
   if ui::confirm "Convert $tag to Singularity?"; then
     builder::convert "$tag"
@@ -253,11 +247,8 @@ interactive_convert() {
         ui::msgbox "Error" "No Dockerfile found for $tool $version"
         return
       }
-      echo "Building $tag... (this may take a while)"
-      docker build -t "$tag" -f "$_dockerfile" "$_tool_dir" 2>&1 || {
-        ui::msgbox "Build failed" "docker build exited with non-zero status"
-        return
-      }
+      # Delegate to builder::build (handles symlinks, GPG fix, lowercase)
+      builder::build "$_tool_dir" "$version"
     else
       ui::msgbox "Cannot convert" \
         "Build the image first:\n  dockage.sh build $tool $version\n\nOr pull it from Docker Hub:\n  docker pull $tag"
