@@ -57,6 +57,8 @@ if command -v singularity &>/dev/null; then
   info "singularity: $(singularity --version 2>/dev/null)"
 elif command -v apptainer &>/dev/null; then
   info "apptainer:  $(apptainer --version 2>/dev/null)"
+elif [ "$mode" = "full" ]; then
+  info "singularity: will be installed"
 else
   info "singularity: not needed unless you deploy to HPC"
 fi
@@ -67,7 +69,7 @@ if [ "$mode" = "full" ]; then
   echo "  ── Installing optional dependencies ──"
 
   # Detect package manager (prepend sudo if not root)
-  local _s=""
+  _s=""
   [ "$(id -u)" -ne 0 ] && command -v sudo &>/dev/null && _s="sudo "
   if command -v apt-get &>/dev/null; then
     PKG="${_s}apt-get install -y"
@@ -92,7 +94,7 @@ if [ "$mode" = "full" ]; then
   fi
 
   # apptainer (singularity fork, packaged in apt)
-  local _app_installed=false
+  _app_installed=false
   if command -v singularity &>/dev/null; then
     info "singularity: already installed"
     _app_installed=true
