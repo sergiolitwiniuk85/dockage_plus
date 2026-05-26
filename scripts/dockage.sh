@@ -198,12 +198,18 @@ interactive_init() {
   [ -z "$type" ] && return
 
   local name
-  name=$(ui::input "Tool Name" "Enter tool name (e.g. mytool):") || return
-  [ -z "$name" ] && { ui::msgbox "Error" "Name is required"; return; }
+  while :; do
+    name=$(ui::input "Tool Name" "Enter tool name (e.g. mytool):") || return
+    [ -n "$name" ] && break
+    ui::msgbox "Error" "Name is required"
+  done
 
   local version
-  version=$(ui::input "Version" "Enter version (e.g. 1.0.0):") || return
-  [ -z "$version" ] && { ui::msgbox "Error" "Version is required"; return; }
+  while :; do
+    version=$(ui::input "Version" "Enter version (e.g. 1.0.0):") || return
+    [ -n "$version" ] && break
+    ui::msgbox "Error" "Version is required"
+  done
 
   if ! ui::confirm "Create $name ($type) v$version?"; then
     return
