@@ -50,8 +50,7 @@ interactive_main_menu() {
     "VALIDATE" "Check a Dockerfile against repo conventions" \
     "INIT"     "Scaffold a new tool Dockerfile" \
     "CONVERT"  "Convert Docker image to Singularity" \
-    "CHECK"    "Scan all Dockerfiles for known issues" \
-    "DOCTOR"   "Check dependencies and environment" \
+    "CHECK"    "Scan all Dockerfiles + dependency status" \
     "EXIT"     "Leave dockage") || exit 0
 
   case "$choice" in
@@ -60,7 +59,6 @@ interactive_main_menu() {
     INIT)     interactive_init ;;
     CONVERT)  interactive_convert ;;
     CHECK)    interactive_health ;;
-    DOCTOR)   interactive_doctor ;;
     EXIT)     exit 0 ;;
   esac
 }
