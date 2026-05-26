@@ -257,17 +257,7 @@ interactive_convert() {
     return
   fi
 
-  if ui::whiptail_ok; then
-    # Gauge uses format: XXX\n<percent>\n<text>\nXXX — send 50% as placeholder
-    builder::convert "$tool:$version" 2>&1 | while IFS= read -r line; do
-      echo "XXX"
-      echo "50"
-      echo "$line"
-      echo "XXX"
-    done | whiptail --title "Converting to Singularity" --gauge "" 10 70 0
-  else
-    builder::convert "$tool:$version"
-  fi
+  builder::convert "$tool:$version"
 
   if [ -f "$_sif_name" ]; then
     ui::msgbox "Done" "Converted $_tag\n\nOutput: $(pwd)/$_sif_name"
@@ -295,9 +285,9 @@ interactive_doctor() {
     fi
     echo ""
     if command -v whiptail &>/dev/null; then
-      echo "whiptail: available"
+      echo "whiptail: available (not required — select is the default UI)"
     else
-      echo "whiptail: NOT FOUND (install for TUI)"
+      echo "whiptail: not needed (bash select handles navigation)"
     fi
   )
   ui::msgbox "dockage doctor" "$report"
@@ -356,8 +346,8 @@ run_dispatch() {
             elif command -v apptainer &>/dev/null; then echo "[OK] $(apptainer --version 2>/dev/null)"
             else echo "[optional] not found — needed for convert"; fi ;;
           whiptail)
-            if command -v whiptail &>/dev/null; then echo "[OK] $(whiptail --version 2>&1 | head -1)"
-            else echo "[optional] not found — needed for TUI (Phase 2)"; fi ;;
+            if command -v whiptail &>/dev/null; then echo "[OK] $(whiptail --version 2>&1 | head -1) (not required)"
+            else echo "[optional] not needed — bash select is default"; fi ;;
           bats)
             if command -v bats &>/dev/null; then echo "[OK] $(bats --version 2>/dev/null)"
             else echo "[optional] not found — needed for tests"; fi ;;
@@ -366,7 +356,7 @@ run_dispatch() {
       echo "────────────────────────────────────────" ;;
     --help)    usage ;;
     --version) echo "dockage v0.1.0" ;;
-    "")        if ui::whiptail_ok || ui::tty_ok; then interactive_main_menu; else usage; fi ;;
+    "")        if ui::interactive; then interactive_main_menu; else usage; fi ;;
     *)         echo "Unknown command: $1" >&2; usage; exit 1 ;;
   esac
 }

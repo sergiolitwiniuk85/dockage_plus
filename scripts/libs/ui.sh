@@ -1,20 +1,11 @@
 #!/usr/bin/env bash
-# dockage — Interactive UI (whiptail → bash select → text fallback)
+# dockage — Interactive UI (bash select → text fallback)
+# No whiptail dependency. Select uses arrow keys + Enter natively.
 set -euo pipefail
 
 # ── Detection ────────────────────────────────
-# whiptail_ok: whiptail binary exists AND there's a terminal to draw on.
-# Uses /dev/tty (the controlling terminal) instead of -t flags because
-# some terminals (tmux, IDE terminals, SSH wrappers) set up stdin/stdout
-# in ways that fail -t but still have a working terminal.
-# DOCKAGE_TUI=1 forces whiptail mode even without /dev/tty.
-ui::whiptail_ok() {
-  command -v whiptail &>/dev/null || return 1
-  [ -n "${DOCKAGE_TUI:-}" ] && return 0
-  [ -c /dev/tty ] 2>/dev/null || return 1
-  return 0
-}
-ui::tty_ok()     { [ -c /dev/tty ] 2>/dev/null; }
+# Interactive: stdin is a real terminal (not pipe/CI)
+ui::interactive() { [ -t 0 ]; }
 
 # ── Menu: returns selected item key ──────────
 ui::menu() {
@@ -26,40 +17,28 @@ ui::menu() {
     shift 2
   done
 
-  if ui::whiptail_ok; then
-    local -a witems=()
+  if ! ui::interactive; then
+    # Plain text (pipe/CI)
+    echo "=== $title ===" >&2
     for i in "${!keys[@]}"; do
-      witems+=("${keys[$i]}" "${labels[$i]}")
+      echo "  $((i+1))) ${keys[$i]} — ${labels[$i]}" >&2
     done
-    whiptail --title "$title" --menu "" 18 60 10 "${witems[@]}" 3>&1 1>&2 2>&3
+    printf "Choice: " >&2; read -r choice
+    local idx=$((choice - 1))
+    [ "$idx" -ge 0 ] && [ "$idx" -lt "${#keys[@]}" ] && echo "${keys[$idx]}"
     return
   fi
 
-  if ui::tty_ok; then
-    echo "  $title" >&2
-    echo "" >&2
-    local _old_ps3="${PS3-}"
-    PS3="  Choose: "
-    select _ in "${labels[@]}"; do
-      if [ -n "$REPLY" ] && [ "$REPLY" -ge 1 ] && [ "$REPLY" -le "${#keys[@]}" ]; then
-        echo "${keys[$((REPLY-1))]}"
-        break
-      fi
-    done </dev/tty
-    PS3="$_old_ps3"
-    return
-  fi
-
-  # Plain text (pipe/CI)
-  echo "=== $title ===" >&2
-  for i in "${!keys[@]}"; do
-    echo "  $((i+1))) ${keys[$i]} — ${labels[$i]}" >&2
+  # Bash select with arrow keys
+  echo "  $title" >&2
+  echo "" >&2
+  PS3="  Choose: "
+  select _ in "${labels[@]}"; do
+    if [ -n "$REPLY" ] && [ "$REPLY" -ge 1 ] && [ "$REPLY" -le "${#keys[@]}" ]; then
+      echo "${keys[$((REPLY-1))]}"
+      break
+    fi
   done
-  printf "Choice: " >&2; read -r choice
-  local idx=$((choice - 1))
-  if [ "$idx" -ge 0 ] && [ "$idx" -lt "${#keys[@]}" ]; then
-    echo "${keys[$idx]}"
-  fi
 }
 
 # ── Radiolist: returns selected item key ─────
@@ -72,56 +51,43 @@ ui::radiolist() {
     shift 3
   done
 
-  if ui::whiptail_ok; then
-    local -a witems=()
+  if ! ui::interactive; then
+    # Plain text
+    echo "=== $title ===" >&2
     for i in "${!keys[@]}"; do
-      witems+=("${keys[$i]}" "${labels[$i]}" "OFF")
+      echo "  $((i+1))) ${keys[$i]} — ${labels[$i]}" >&2
     done
-    whiptail --title "$title" --radiolist "" 18 60 10 "${witems[@]}" 3>&1 1>&2 2>&3
+    printf "Choice: " >&2; read -r choice
+    local idx=$((choice - 1))
+    [ "$idx" -ge 0 ] && [ "$idx" -lt "${#keys[@]}" ] && echo "${keys[$idx]}"
     return
   fi
 
-  if ui::tty_ok; then
-    echo "  $title" >&2
-    echo "" >&2
-    local -a display=()
-    for i in "${!keys[@]}"; do
-      display+=("${keys[$i]} — ${labels[$i]}")
-    done
-    local _old_ps3="${PS3-}"
-    PS3="  Choose: "
-    select _ in "${display[@]}"; do
-      if [ -n "$REPLY" ] && [ "$REPLY" -ge 1 ] && [ "$REPLY" -le "${#keys[@]}" ]; then
-        echo "${keys[$((REPLY-1))]}"
-        break
-      fi
-    done </dev/tty
-    PS3="$_old_ps3"
-    return
-  fi
-
-  # Plain text
-  echo "=== $title ===" >&2
+  # Bash select with arrow keys
+  echo "  $title" >&2
+  echo "" >&2
+  local -a display=()
   for i in "${!keys[@]}"; do
-    echo "  $((i+1))) ${keys[$i]} — ${labels[$i]}" >&2
+    display+=("${keys[$i]} — ${labels[$i]}")
   done
-  printf "Choice: " >&2; read -r choice
-  local idx=$((choice - 1))
-  if [ "$idx" -ge 0 ] && [ "$idx" -lt "${#keys[@]}" ]; then
-    echo "${keys[$idx]}"
-  fi
+  PS3="  Choose: "
+  select _ in "${display[@]}"; do
+    if [ -n "$REPLY" ] && [ "$REPLY" -ge 1 ] && [ "$REPLY" -le "${#keys[@]}" ]; then
+      echo "${keys[$((REPLY-1))]}"
+      break
+    fi
+  done
 }
 
 # ── Input box ───────────────────────────────
 ui::input() {
-  local title="$1"
   local prompt="$2"
-
-  if ui::whiptail_ok; then
-    whiptail --title "$title" --inputbox "$prompt" 8 60 3>&1 1>&2 2>&3
+  if ! ui::interactive; then
+    printf "%s: " "$prompt" >&2
+    read -r val
+    echo "$val"
     return
   fi
-
   printf "  %s: " "$prompt" >&2
   read -r val
   echo "$val"
@@ -129,11 +95,12 @@ ui::input() {
 
 # ── Yes/No confirm ─────────────────────────
 ui::confirm() {
-  if ui::whiptail_ok; then
-    whiptail --title "Confirm" --yesno "$*" 10 60
+  if ! ui::interactive; then
+    printf "%s [y/N] " "$*" >&2
+    read -r resp
+    [[ "$resp" =~ ^[yY] ]]
     return
   fi
-
   printf "  %s [y/N] " "$*" >&2
   read -r resp
   [[ "$resp" =~ ^[yY] ]]
@@ -142,15 +109,15 @@ ui::confirm() {
 # ── Message box ────────────────────────────
 ui::msgbox() {
   local title="$1"; shift
-  if ui::whiptail_ok; then
-    whiptail --title "$title" --msgbox "$*" 15 70
+  if ! ui::interactive; then
+    echo "=== $title ===" >&2
+    echo "$*" >&2
     return
   fi
   echo "=== $title ===" >&2
   echo "$*" >&2
-  if ui::tty_ok; then
-    printf "  Press Enter to continue." >&2; read -r </dev/tty
-  fi
+  printf "  Press Enter to continue." >&2
+  read -r
 }
 
 # ── Info alias ─────────────────────────────
