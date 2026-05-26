@@ -46,22 +46,22 @@ EOF
 interactive_main_menu() {
   local choice
   choice=$(ui::menu "dockage" \
-    "Build"   "Build a Docker image (with validation)" \
-    "Validate" "Check a Dockerfile against repo conventions" \
-    "Init"    "Scaffold a new tool Dockerfile" \
-    "Convert" "Convert Docker image to Singularity" \
-    "Check"   "Scan all Dockerfiles for known issues" \
-    "Doctor"  "Check dependencies and environment" \
-    "Exit"    "Leave dockage") || exit 0
+    "BUILD"    "Build a Docker image (with validation)" \
+    "VALIDATE" "Check a Dockerfile against repo conventions" \
+    "INIT"     "Scaffold a new tool Dockerfile" \
+    "CONVERT"  "Convert Docker image to Singularity" \
+    "CHECK"    "Scan all Dockerfiles for known issues" \
+    "DOCTOR"   "Check dependencies and environment" \
+    "EXIT"     "Leave dockage") || exit 0
 
   case "$choice" in
-    Build)    interactive_build ;;
-    Validate) interactive_validate ;;
-    Init)     interactive_init ;;
-    Convert)  interactive_convert ;;
-    Check)    interactive_health ;;
-    Doctor)   interactive_doctor ;;
-    Exit)     exit 0 ;;
+    BUILD)    interactive_build ;;
+    VALIDATE) interactive_validate ;;
+    INIT)     interactive_init ;;
+    CONVERT)  interactive_convert ;;
+    CHECK)    interactive_health ;;
+    DOCTOR)   interactive_doctor ;;
+    EXIT)     exit 0 ;;
   esac
 }
 
