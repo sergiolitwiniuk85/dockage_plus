@@ -33,6 +33,7 @@ Commands:
   validate <tool> [version] Validate Dockerfile conventions
   init <type> <name> <ver>  Scaffold new tool Dockerfile
   convert <tool> <version>  Convert Docker image to Singularity
+  health                    Scan all Dockerfiles for known issues
   doctor                    Check dependencies and environment
 
 Options:
@@ -49,6 +50,7 @@ interactive_main_menu() {
     "Validate" "Check a Dockerfile against repo conventions" \
     "Init"    "Scaffold a new tool Dockerfile" \
     "Convert" "Convert Docker image to Singularity" \
+    "Health"  "Scan all Dockerfiles for known issues" \
     "Doctor"  "Check dependencies and environment" \
     "Exit"    "Leave dockage") || exit 0
 
@@ -57,6 +59,7 @@ interactive_main_menu() {
     Validate) interactive_validate ;;
     Init)     interactive_init ;;
     Convert)  interactive_convert ;;
+    Health)   interactive_health ;;
     Doctor)   interactive_doctor ;;
     Exit)     exit 0 ;;
   esac
@@ -293,6 +296,84 @@ interactive_doctor() {
   ui::msgbox "dockage doctor" "$report"
 }
 
+# ── Health ──────────────────────────────────
+# Static analysis of all Dockerfiles to detect known issues without building.
+dockage_health() {
+  local root="$DIR/.."
+
+  local total=0 ok=0 warn=0
+
+  printf "\n─── dockage health ─────────────────────\n"
+  printf "  %-28s %-33s  %s\n" "TOOL" "FROM" "STATUS"
+  printf "  %-28s %-33s  %s\n" "────" "────" "──────"
+
+  for dir in "$root"/*/; do
+    local name; name=$(basename "$dir")
+    [ "$name" = "scripts" ] || [ "$name" = "tests" ] && continue
+    [[ "$name" == .* ]] && continue
+
+    # Find Dockerfile(s) in this tool directory
+    local dockerfiles=()
+    while IFS= read -r -d '' f; do
+      dockerfiles+=("$f")
+    done < <(find "$dir" -maxdepth 1 -name 'Dockerfile*' -type f -print0 2>/dev/null | sort -z)
+
+    [ ${#dockerfiles[@]} -eq 0 ] && continue
+
+    total=$((total + 1))
+
+    # Use the primary Dockerfile (first one, typically Dockerfile)
+    local primary="${dockerfiles[0]}"
+
+    # Extract FROM image (first one, most relevant)
+    local from
+    from=$(grep '^FROM' "$primary" 2>/dev/null | head -1 | sed 's/^FROM //' | sed 's/ AS .*//')
+    from="${from:-unknown}"
+
+    local -a issues=()
+
+    # Check each Dockerfile for known issues
+    for df in "${dockerfiles[@]}"; do
+      if grep -qiE '\b(sid|testing|unstable)\b' "$df" 2>/dev/null; then
+        if ! grep -qE 'apt-key|gpg[^l]|--allow-unauthenticated|AllowInsecureRepositories' "$df" 2>/dev/null; then
+          issues+=("GPG: $(basename "$df")")
+        fi
+      fi
+      # Check for COPY Dockerfile /docker without proper file
+      if grep -q 'COPY Dockerfile' "$df" 2>/dev/null; then
+        local df_base; df_base=$(basename "$df")
+        if [ "$df_base" != "Dockerfile" ] && [ ! -f "$dir/Dockerfile" ]; then
+          issues+=("COPY: $(basename "$df") needs symlink")
+        fi
+      fi
+    done
+
+    local status
+    if [ ${#issues[@]} -eq 0 ]; then
+      status="OK"
+      ok=$((ok + 1))
+    else
+      status="${issues[0]}"
+      [ ${#issues[@]} -gt 1 ] && status+=" (+$((${#issues[@]}-1)))"
+      warn=$((warn + 1))
+    fi
+
+    printf "  %-28s %-33s  %s\n" "$name" "${froms:0:31}" "$status"
+  done
+
+  printf "  ─────────────────────────────────────────────\n"
+  printf "  Total: %d | OK: %d | Warnings: %d\n" "$total" "$ok" "$warn"
+  echo "────────────────────────────────────────"
+
+  [ $warn -eq 0 ] || return 1
+}
+
+interactive_health() {
+  local report
+  report=$(dockage_health 2>&1)
+  ui::msgbox "dockage health" "$report"
+}
+
 run_dispatch() {
   case "${1:-}" in
     build)     shift; builder::build_main "$@" ;;
@@ -328,6 +409,7 @@ run_dispatch() {
       ;;
     init)      shift; (cd "$DIR/.." && scaffolder::scaffold_main "$@") ;;
     convert)   shift; builder::convert_main "$@" ;;
+    health)    shift; dockage_health "$@" ;;
     doctor)
       echo "─── dockage doctor ──────────────────────"
       for check in bash docker singularity whiptail bats; do
