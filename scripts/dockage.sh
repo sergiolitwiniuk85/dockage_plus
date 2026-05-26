@@ -368,10 +368,38 @@ dockage_health() {
   [ $warn -eq 0 ] || return 1
 }
 
+dockage_doctor() {
+  echo "─── dockage doctor ──────────────────────"
+  for check in bash docker singularity fzf bats; do
+    echo -n "  $(printf '%-13s' "$check")"
+    case "$check" in
+      bash)
+        if [ "${BASH_VERSINFO:-0}" -ge 4 ]; then echo "[OK] v$BASH_VERSION"
+        else echo "[WARNING] v$BASH_VERSION (≥ 4.0 recommended)"; fi ;;
+      docker)
+        if command -v docker &>/dev/null; then
+          if docker info &>/dev/null; then echo "[OK] $(docker --version 2>/dev/null)"
+          else echo "[WARNING] installed but daemon not running"; fi
+        else echo "[MISSING] install: https://docs.docker.com/get-docker/"; fi ;;
+      singularity)
+        if command -v singularity &>/dev/null; then echo "[OK] $(singularity --version 2>/dev/null)"
+        elif command -v apptainer &>/dev/null; then echo "[OK] $(apptainer --version 2>/dev/null)"
+        else echo "[optional] not found — needed for convert"; fi ;;
+      fzf)
+        if command -v fzf &>/dev/null; then echo "[OK] $(fzf --version 2>/dev/null)"
+        else echo "[MISSING] needed for interactive menus — run: bash install.sh"; fi ;;
+      bats)
+        if command -v bats &>/dev/null; then echo "[OK] $(bats --version 2>/dev/null)"
+        else echo "[optional] not found — needed for tests"; fi ;;
+    esac
+  done
+  echo "────────────────────────────────────────"
+}
+
 interactive_health() {
   local report
-  report=$(dockage_health 2>&1)
-  ui::msgbox "dockage health" "$report"
+  report=$( { dockage_health 2>&1 || true; echo ""; dockage_doctor 2>&1 || true; } )
+  ui::msgbox "Check" "$report"
 }
 
 run_dispatch() {
@@ -410,32 +438,7 @@ run_dispatch() {
     init)      shift; (cd "$DIR/.." && scaffolder::scaffold_main "$@") ;;
     convert)   shift; builder::convert_main "$@" ;;
     health)    shift; dockage_health "$@" ;;
-    doctor)
-      echo "─── dockage doctor ──────────────────────"
-      for check in bash docker singularity whiptail bats; do
-        echo -n "  $(printf '%-13s' "$check")"
-        case "$check" in
-          bash)
-            if [ "${BASH_VERSINFO:-0}" -ge 4 ]; then echo "[OK] v$BASH_VERSION"
-            else echo "[WARNING] v$BASH_VERSION (≥ 4.0 recommended)"; fi ;;
-          docker)
-            if command -v docker &>/dev/null; then
-              if docker info &>/dev/null; then echo "[OK] $(docker --version 2>/dev/null)"
-              else echo "[WARNING] installed but daemon not running"; fi
-            else echo "[MISSING] install: https://docs.docker.com/get-docker/"; fi ;;
-          singularity)
-            if command -v singularity &>/dev/null; then echo "[OK] $(singularity --version 2>/dev/null)"
-            elif command -v apptainer &>/dev/null; then echo "[OK] $(apptainer --version 2>/dev/null)"
-            else echo "[optional] not found — needed for convert"; fi ;;
-          whiptail)
-            if command -v whiptail &>/dev/null; then echo "[OK] $(whiptail --version 2>&1 | head -1) (not required)"
-            else echo "[optional] not needed — bash select is default"; fi ;;
-          bats)
-            if command -v bats &>/dev/null; then echo "[OK] $(bats --version 2>/dev/null)"
-            else echo "[optional] not found — needed for tests"; fi ;;
-        esac
-      done
-      echo "────────────────────────────────────────" ;;
+    doctor)    shift; dockage_doctor "$@" ;;
     --help)    usage ;;
     --version) echo "dockage v0.1.0" ;;
     "")        if ui::interactive; then interactive_main_menu; else usage; fi ;;
