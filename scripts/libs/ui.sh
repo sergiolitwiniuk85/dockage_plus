@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
-# dockage — Interactive UI (bash select → text fallback)
-# No whiptail dependency. Select uses arrow keys + Enter natively.
+# dockage — Interactive UI (fzf > bash select > plain text)
 set -euo pipefail
 
-# ── Detection ────────────────────────────────
-# Interactive: stdin is a real terminal (not pipe/CI)
 ui::interactive() { [ -t 0 ]; }
 
 # ── Menu: returns selected item key ──────────
@@ -18,7 +15,6 @@ ui::menu() {
   done
 
   if ! ui::interactive; then
-    # Plain text (pipe/CI)
     echo "=== $title ===" >&2
     for i in "${!keys[@]}"; do
       echo "  $((i+1))) ${keys[$i]} — ${labels[$i]}" >&2
@@ -29,7 +25,23 @@ ui::menu() {
     return
   fi
 
-  # Bash select with arrow keys
+  # fzf: arrow keys, type to search, Enter/Escape
+  if command -v fzf &>/dev/null; then
+    local result
+    result=$(
+      for i in "${!keys[@]}"; do
+        printf "%s\t%s\n" "${keys[$i]}" "${labels[$i]}"
+      done | fzf --with-nth=2.. --delimiter=$'\t' \
+                  --header="$title" --prompt="  Choose: " \
+                  --height=~40% --reverse --cycle
+    ) || return 1
+    local key
+    IFS=$'\t' read -r key _ <<< "$result"
+    echo "$key"
+    return
+  fi
+
+  # Bash select fallback
   echo "  $title" >&2
   echo "" >&2
   PS3="  Choose: "
@@ -52,7 +64,6 @@ ui::radiolist() {
   done
 
   if ! ui::interactive; then
-    # Plain text
     echo "=== $title ===" >&2
     for i in "${!keys[@]}"; do
       echo "  $((i+1))) ${keys[$i]} — ${labels[$i]}" >&2
@@ -63,7 +74,23 @@ ui::radiolist() {
     return
   fi
 
-  # Bash select with arrow keys
+  # fzf
+  if command -v fzf &>/dev/null; then
+    local result
+    result=$(
+      for i in "${!keys[@]}"; do
+        printf "%s\t%s\n" "${keys[$i]}" "${labels[$i]}"
+      done | fzf --with-nth=2.. --delimiter=$'\t' \
+                  --header="$title" --prompt="  Choose: " \
+                  --height=~80% --reverse --cycle
+    ) || return 1
+    local key
+    IFS=$'\t' read -r key _ <<< "$result"
+    echo "$key"
+    return
+  fi
+
+  # Bash select fallback
   echo "  $title" >&2
   echo "" >&2
   local -a display=()
@@ -83,42 +110,29 @@ ui::radiolist() {
 ui::input() {
   local prompt="$2"
   if ! ui::interactive; then
-    printf "%s: " "$prompt" >&2
-    read -r val
-    echo "$val"
+    printf "%s: " "$prompt" >&2; read -r val; echo "$val"
     return
   fi
-  printf "  %s: " "$prompt" >&2
-  read -r val
-  echo "$val"
+  printf "  %s: " "$prompt" >&2; read -r val; echo "$val"
 }
 
 # ── Yes/No confirm ─────────────────────────
 ui::confirm() {
   if ! ui::interactive; then
-    printf "%s [y/N] " "$*" >&2
-    read -r resp
-    [[ "$resp" =~ ^[yY] ]]
+    printf "%s [y/N] " "$*" >&2; read -r resp; [[ "$resp" =~ ^[yY] ]]
     return
   fi
-  printf "  %s [y/N] " "$*" >&2
-  read -r resp
-  [[ "$resp" =~ ^[yY] ]]
+  printf "  %s [y/N] " "$*" >&2; read -r resp; [[ "$resp" =~ ^[yY] ]]
 }
 
 # ── Message box ────────────────────────────
 ui::msgbox() {
   local title="$1"; shift
-  if ! ui::interactive; then
-    echo "=== $title ===" >&2
-    echo "$*" >&2
-    return
-  fi
   echo "=== $title ===" >&2
   echo "$*" >&2
-  printf "  Press Enter to continue." >&2
-  read -r
+  if ui::interactive; then
+    printf "  Press Enter to continue." >&2; read -r
+  fi
 }
 
-# ── Info alias ─────────────────────────────
 ui::info() { ui::msgbox "Info" "$*"; }

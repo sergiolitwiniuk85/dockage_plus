@@ -71,6 +71,15 @@ else
   warn "            https://docs.sylabs.io/guides/latest/admin-guide/installation.html"
 fi
 
+# fzf (fuzzy finder) — arrow key navigation for menus
+if command -v fzf &>/dev/null; then
+  info "fzf:        $(fzf --version 2>/dev/null)"
+elif [ -n "$PKG" ] && $PKG fzf 2>/dev/null; then
+  info "fzf:        installed"
+else
+  warn "fzf:        not found — fallback to bash select (numbers)"
+fi
+
 # bats
 if command -v bats &>/dev/null; then
   info "bats:       $(bats --version 2>/dev/null)"

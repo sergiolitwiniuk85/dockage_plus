@@ -11,6 +11,7 @@ Welcome to Dockage, a collection of Dockerfiles designed for bioinformatic workf
 | **bash** ≥ 4.0 | Runtime | ✅ Preinstalled on all Linux/macOS |
 | **Docker** | Building images | [docs.docker.com/get-docker](https://docs.docker.com/get-docker/) |
 | **Singularity/Apptainer** | Converting to `.sif` for HPC | Installed automatically |
+| **fzf** | Interactive menus (arrow keys, search, Enter/Escape) | Installed automatically |
 | **bats** | Running unit tests | Installed automatically |
 
 ### One-command setup
@@ -21,9 +22,7 @@ cd dockage_plus/scripts
 bash install.sh
 ```
 
-The installer detects your package manager, uses `sudo` if needed, and installs everything: `apptainer` (Singularity) for HPC conversion and `bats` for tests.
-
-The UI uses bash's built-in `select` — zero dependencies, arrow keys + Enter work natively.
+The installer detects your package manager, uses `sudo` if needed, and installs everything: `apptainer` (Singularity) for HPC conversion, `fzf` for interactive menus, and `bats` for tests.
 
 The CLI works with Docker alone. Singularity is only needed if you deploy to HPC.
 
@@ -36,8 +35,9 @@ cd scripts/
 ./dockage.sh
 ```
 
-The UI uses bash's built-in `select` — zero dependencies, arrow keys + Enter work natively:
-- **terminal** → interactive menu with arrow keys
+The UI adapts to what's available:
+- **fzf** installed → full interactive menu: arrow keys, type to search, Enter/Escape (recommended)
+- **no fzf** → `select` fallback (type a number, press Enter)
 - **pipe/CI** → plain usage text
 
 You can also use CLI commands directly:
