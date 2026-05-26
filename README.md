@@ -10,11 +10,10 @@ Welcome to Dockage, a collection of Dockerfiles designed for bioinformatic workf
 |------|-----------|-------|
 | **bash** ≥ 4.0 | Runtime | ✅ Preinstalled on all Linux/macOS |
 | **Docker** | Building images | [docs.docker.com/get-docker](https://docs.docker.com/get-docker/) |
-| **Singularity/Apptainer** | Converting to `.sif` for HPC | Installed automatically in full mode |
-| **whiptail** | Interactive TUI *(optional — bash `select` is the default)* | Installed automatically in full mode |
-| **bats** | Running unit tests | Installed automatically in full mode |
+| **Singularity/Apptainer** | Converting to `.sif` for HPC | Installed automatically |
+| **bats** | Running unit tests | Installed automatically |
 
-### One-command setup (recommended)
+### One-command setup
 
 ```bash
 git clone https://github.com/sergiolitwiniuk85/dockage_plus.git
@@ -22,18 +21,9 @@ cd dockage_plus/scripts
 bash install.sh
 ```
 
-The installer detects your package manager, uses `sudo` if needed, and installs everything. **Full** mode is the default and sets up:
+The installer detects your package manager, uses `sudo` if needed, and installs everything: `apptainer` (Singularity) for HPC conversion and `bats` for tests.
 
-- `whiptail` *(optional — bash `select` is default UI, zero deps)*
-- `apptainer` (Singularity) — convert Docker images to `.sif` for HPC
-- `bats` — unit test framework
-
-You can also choose **Simple** mode (just checks Docker, skips optional deps):
-
-```bash
-bash install.sh simple      # minimal — Docker only
-bash install.sh full        # everything (default)
-```
+The UI uses bash's built-in `select` — zero dependencies, arrow keys + Enter work natively.
 
 The CLI works with Docker alone. Singularity is only needed if you deploy to HPC.
 
