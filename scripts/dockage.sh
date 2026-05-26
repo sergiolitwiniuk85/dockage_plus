@@ -358,7 +358,7 @@ dockage_health() {
       warn=$((warn + 1))
     fi
 
-    printf "  %-28s %-33s  %s\n" "$name" "${froms:0:31}" "$status"
+    printf "  %-28s %-33s  %s\n" "$name" "${from:0:31}" "$status"
   done
 
   printf "  ─────────────────────────────────────────────\n"
