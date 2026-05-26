@@ -42,25 +42,27 @@ Options:
 EOF
 }
 
-# ── Interactive TUI (whiptail) ────────────────
+# ── Interactive TUI ────────────────────────
 interactive_main_menu() {
-  local choice
-  choice=$(ui::menu "dockage" \
-    "BUILD"    "Build a Docker image (with validation)" \
-    "VALIDATE" "Check a Dockerfile against repo conventions" \
-    "INIT"     "Scaffold a new tool Dockerfile" \
-    "CONVERT"  "Convert Docker image to Singularity" \
-    "CHECK"    "Scan all Dockerfiles + dependency status" \
-    "EXIT"     "Leave dockage") || exit 0
+  while true; do
+    local choice
+    choice=$(ui::menu "dockage" \
+      "BUILD"    "Build a Docker image (with validation)" \
+      "VALIDATE" "Check a Dockerfile against repo conventions" \
+      "INIT"     "Scaffold a new tool Dockerfile" \
+      "CONVERT"  "Convert Docker image to Singularity" \
+      "CHECK"    "Scan all Dockerfiles + dependency status" \
+      "EXIT"     "Leave dockage") || exit 0
 
-  case "$choice" in
-    BUILD)    interactive_build ;;
-    VALIDATE) interactive_validate ;;
-    INIT)     interactive_init ;;
-    CONVERT)  interactive_convert ;;
-    CHECK)    interactive_health ;;
-    EXIT)     exit 0 ;;
-  esac
+    case "$choice" in
+      BUILD)    interactive_build ;;
+      VALIDATE) interactive_validate ;;
+      INIT)     interactive_init ;;
+      CONVERT)  interactive_convert ;;
+      CHECK)    interactive_health ;;
+      EXIT)     exit 0 ;;
+    esac
+  done
 }
 
 # Pick a tool from the list using radiolist
@@ -235,6 +237,7 @@ interactive_convert() {
   local tag; tag=$(builder::determine_tag "$tool" "$version")
   local tool_lower; tool_lower=$(echo "$tool" | tr '[:upper:]' '[:lower:]')
   local _sif_name="${tool_lower}-${version}.sif"
+  local _just_built=false
 
   # Check if Docker image exists locally
   if ! docker image inspect "$tag" &>/dev/null; then
@@ -245,8 +248,8 @@ interactive_convert() {
         ui::msgbox "Error" "No Dockerfile found for $tool $version"
         return
       }
-      # Delegate to builder::build (handles symlinks, GPG fix, lowercase)
       builder::build "$_tool_dir" "$version"
+      _just_built=true
     else
       ui::msgbox "Cannot convert" \
         "Build the image first:\n  dockage.sh build $tool $version\n\nOr pull it from Docker Hub:\n  docker pull $tag"
@@ -254,11 +257,10 @@ interactive_convert() {
     fi
   fi
 
-  if ! ui::confirm "Convert $tag to Singularity?\n\nOutput: $_sif_name"; then
-    return
+  # If we just built it, skip the confirmation — user already chose Convert
+  if $_just_built || ui::confirm "Convert $tag to Singularity?\n\nOutput: $_sif_name"; then
+    builder::convert "$tag"
   fi
-
-  builder::convert "$tag"
 
   if [ -f "$_sif_name" ]; then
     ui::msgbox "Done" "Converted $tag\n\nOutput: $(pwd)/$_sif_name"
